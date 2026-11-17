@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - name: Check formatting
+        run: zig fmt --check build.zig build.zig.zon src tests examples bench
+      - name: Test and compile tools
+        run: zig build test check example --cache-dir out/ci/cache --summary all
+      - name: Test with release safety checks
+        run: zig build test --release=safe --cache-dir out/ci/cache --summary all
+      - name: Clean generated output
+        if: always()
+        shell: python
+        run: |
+          from pathlib import Path
+          import os
+          import shutil
+          import stat
+          root = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          output = (root / "out" / "ci").resolve()
+          assert output.parent == root / "out"
+          def make_writable(action, path, error):
+              os.chmod(path, stat.S_IWRITE)
+              action(path)
+          if output.exists():
+              shutil.rmtree(output, onerror=make_writable)

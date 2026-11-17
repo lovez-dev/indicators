@@ -1,0 +1,18 @@
+# Zig build artifacts
+.zig-cache/
+zig-out/
+zig-pkg/
+*.o
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local benchmark or tool output
+out/
+*.out
+*.prof
